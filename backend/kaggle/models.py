@@ -113,6 +113,11 @@ class Match(models.Model):
 class Shootout(models.Model):
     """Модель пенальти после матча."""
 
+    class Winner(models.IntegerChoices):
+        UNKNOWN = 0, 'Unknown'
+        FIRST = 1, 'First'
+        SECOND = 2, 'Second'
+
     class Meta:
         verbose_name = 'Пенальти'
         verbose_name_plural = 'Пенальти'
@@ -125,18 +130,19 @@ class Shootout(models.Model):
         primary_key=True,
         related_name='shootout'
     )
-    numb_winner = models.SmallIntegerField(
+    choice_winner = models.SmallIntegerField(
         help_text='Победитель',
         verbose_name='Победитель',
-        validators=[MinValueValidator(0), MaxValueValidator(2)]
+        choices=Winner.choices,
+        default=Winner.UNKNOWN,
     )
 
     def __winner(self):
-        if self.numb_winner == 1:
+        if self.choice_winner == Shootout.Winner.FIRST:
             return self.match.team1
-        if self.numb_winner == 2:
+        if self.choice_winner == Shootout.Winner.SECOND:
             return self.match.team2
-        return 'Unknow'
+        return Shootout.Winner.UNKNOWN.label
 
     winner = property(__winner)
 
