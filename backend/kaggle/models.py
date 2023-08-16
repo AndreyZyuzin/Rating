@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 class Team(models.Model):
@@ -122,19 +123,22 @@ class Shootout(models.Model):
         verbose_name='Матч',
         on_delete=models.CASCADE,
         primary_key=True,
+        related_name='shootout'
     )
-    winner = models.ForeignKey(
-        Team,
+    numb_winner = models.SmallIntegerField(
         help_text='Победитель',
         verbose_name='Победитель',
-        on_delete=models.CASCADE,
+        validators=[MinValueValidator(0), MaxValueValidator(2)]
     )
 
-    def clean(self) -> None:
-        if (self.match_id and self.winner_id and
-                self.winner not in (self.match.team1_id, self.match.team2_id)):
-            raise ValidationError(
-                'Победитель должен быть один из участников матча.')
+    def __winner(self):
+        if self.numb_winner == 1:
+            return self.match.team1
+        if self.numb_winner == 2:
+            return self.match.team2
+        return 'Unknow'
+
+    winner = property(__winner)
 
     def __str__(self):
-        return self.winner.name
+        return f'{self.match}'
