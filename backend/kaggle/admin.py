@@ -15,6 +15,22 @@ class MatchAdmin(admin.ModelAdmin):
     list_filter = ('tournament', 'date')
     search_fields = ('tournament__title',)
     ordering = ('-date',)
+    fieldsets = (
+        ('Турнир', {
+            'fields': ('tournament',)
+        }),
+        ('Дата и местоположение', {
+            'fields': ('date', ('country', 'city',),)
+        }),
+        ('Участники матча', {
+            'fields': ('is_neutral', ('team1', 'team2'), ('goals1', 'goals2'))
+        }),
+    )
+#    fields = (
+#        ('date', 'country', 'city',),
+#        ('tournament', 'is_neutral',),
+#        ('team1', 'team2', 'goals1', 'goals2',),
+#    )
 
     def result(self, match):
         return f'{match} - {match.goals1}:{match.goals2}'
