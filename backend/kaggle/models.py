@@ -1,3 +1,4 @@
+from typing import Iterable, Optional
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -35,6 +36,13 @@ class Tournament(models.Model):
         unique=True,
         help_text='Название турнира',
         verbose_name='Название',
+    )
+
+    coefficient = models.FloatField(
+        help_text='Коэффициент - вес турнира',
+        verbose_name='Коэф.',
+        default=1,
+        validators=[MinValueValidator(0)],
     )
 
     def __str__(self):
@@ -106,6 +114,13 @@ class Match(models.Model):
             raise ValidationError(
                 f'Недопустимо, чтобы команда {name} играла сама с собой.')
 
+    def save(self, *args, **kwargs):
+        print('saving Match')
+        print(self.city)
+        if hasattr(self, 'shootout'):
+            pass
+        return super().save(*args, **kwargs)
+
     def __str__(self):
         return f'{self.team1}-{self.team2}'
 
@@ -119,7 +134,7 @@ class Shootout(models.Model):
         SECOND = 2, 'Second'
 
     class Meta:
-        verbose_name = 'Пенальти'
+        verbose_name = 'Послематчевые пенальти'
         verbose_name_plural = 'Пенальти'
 
     match = models.OneToOneField(
@@ -128,7 +143,7 @@ class Shootout(models.Model):
         verbose_name='Матч',
         on_delete=models.CASCADE,
         primary_key=True,
-        related_name='shootout'
+        related_name='shootout',
     )
     choice_winner = models.SmallIntegerField(
         help_text='Победитель',
@@ -148,3 +163,62 @@ class Shootout(models.Model):
 
     def __str__(self):
         return f'{self.match}'
+
+
+class Goal(models.Model):
+    """Модель кто забил голы."""
+
+    class FromTeam(models.IntegerChoices):
+        FIRST = 1, 'First'
+        SECOND = 2, 'Second'
+
+    class Status(models.IntegerChoices):
+        NONE = 0, ''
+        PENALTY = 1, 'Penalty'
+        OWN = 2, 'Own goal'
+
+    class Meta:
+        verbose_name = 'Гол'
+        verbose_name_plural = 'Голы'
+
+    match = models.ForeignKey(
+        Match,
+        help_text='Матч',
+        verbose_name='Матч',
+        on_delete=models.CASCADE,
+        related_name='goalscore',
+    )
+    scorer = models.CharField(
+        max_length=50,
+        help_text='Имя бомбардира',
+        verbose_name='Имя',
+    )
+    minute = models.PositiveSmallIntegerField(
+        help_text='На какой минуте',
+        verbose_name='Минута',
+        default=0,
+    )
+    choice_team = models.SmallIntegerField(
+        help_text='Из какой команды',
+        verbose_name='Команда',
+        choices=FromTeam.choices,
+    )
+    status = models.SmallIntegerField(
+        help_text='Примечание',
+        verbose_name='Прим.',
+        choices=Status.choices,
+        default=Status.NONE,
+    )
+
+    def __team(self):
+        if self.choice_team == Goal.FromTeam.FIRST:
+            return self.match.team1
+        if self.choice_team == Goal.FromTeam.SECOND:
+            return self.match.team2
+        return None
+
+    team = property(__team)
+
+    def __str__(self):
+        return f'{self.scorer}'
+

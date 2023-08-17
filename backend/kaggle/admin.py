@@ -1,10 +1,30 @@
+from django.contrib.auth.models import User, Group
 from django.contrib import admin
 
-from .models import Tournament, Team, Match, Shootout
+from .models import (Goal, Match, Shootout, Team, Tournament)
 
 
-admin.site.register(Tournament)
-admin.site.register(Team)
+class TournamentAdmin(admin.ModelAdmin):
+    list_display = ('title', 'coefficient')
+    list_display_links = ('title',)
+    list_editable = ('coefficient',)
+    search_fields = ('title',)
+    ordering = ('-coefficient', 'title')
+    actions = ('export_csv',)
+
+    def export_csv(self, request, quuryset):
+        pass
+    export_csv.short_description = 'Экспортировать выбранное в tournament.csv'
+
+
+class ShootoutInline(admin.StackedInline):
+    model = Shootout
+    extra = 0
+
+
+class GoalInline(admin.TabularInline):
+    model = Goal
+    extra = 0
 
 
 @admin.register(Match)
@@ -26,11 +46,7 @@ class MatchAdmin(admin.ModelAdmin):
             'fields': ('is_neutral', ('team1', 'team2'), ('goals1', 'goals2'))
         }),
     )
-#    fields = (
-#        ('date', 'country', 'city',),
-#        ('tournament', 'is_neutral',),
-#        ('team1', 'team2', 'goals1', 'goals2',),
-#    )
+    inlines = (ShootoutInline, GoalInline,)
 
     def result(self, match):
         return f'{match} - {match.goals1}:{match.goals2}'
@@ -51,7 +67,11 @@ class MatchAdmin(admin.ModelAdmin):
 
 
 class ShootoutAdmin(admin.ModelAdmin):
-    list_display = ('match', 'winner')
+    list_display = ('match', 'winner',)
 
 
 admin.site.register(Shootout, ShootoutAdmin)
+admin.site.register(Tournament, TournamentAdmin)
+admin.site.register(Team)
+admin.site.unregister(User)
+admin.site.unregister(Group)
