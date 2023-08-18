@@ -1,7 +1,7 @@
-from django.contrib.auth.models import User, Group
 from django.contrib import admin
+from django.contrib.auth.models import Group, User
 
-from .models import (Goal, Match, Shootout, Team, Tournament)
+from kaggle.models import Goal, Match, Shootout, Team, Tournament
 
 
 class TournamentAdmin(admin.ModelAdmin):
@@ -19,6 +19,7 @@ class TournamentAdmin(admin.ModelAdmin):
 
 class ShootoutInline(admin.StackedInline):
     model = Shootout
+    can_delete = True
     extra = 0
 
 

@@ -56,6 +56,12 @@ class Match(models.Model):
         verbose_name = 'Матч'
         verbose_name_plural = 'Матчи'
         ordering = ('-date', )
+        constraints = [
+            models.UniqueConstraint(
+                fields=('date', 'team1', 'team2'),
+                name='unique_match',
+            )
+        ]
 
     date = models.DateField(help_text='Дата матча', verbose_name='Дата')
     tournament = models.ForeignKey(
@@ -114,12 +120,12 @@ class Match(models.Model):
             raise ValidationError(
                 f'Недопустимо, чтобы команда {name} играла сама с собой.')
 
-    def save(self, *args, **kwargs):
-        print('saving Match')
-        print(self.city)
-        if hasattr(self, 'shootout'):
-            pass
-        return super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     print('saving Match')
+    #     print(self.city)
+    #     if hasattr(self, 'shootout'):
+    #         pass
+    #     return super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.team1}-{self.team2}'
