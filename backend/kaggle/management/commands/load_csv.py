@@ -56,7 +56,7 @@ class Command(BaseCommand):
             print(f'{full_name_file} - {os.path.exists(full_name_file)}')
 
         tournaments = {'updated': set(), 'created': set()}
-        teams = {}
+        teams = {'updated': {}, 'created': set()}
         matches = {'updated': [], 'created': []}
         shootouts = {'updated': [], 'created': []}
         goalscorers = {'updated': [], 'created': []}
@@ -74,20 +74,22 @@ class Command(BaseCommand):
                     row = next(reader, None)
                 while row is not None:
                     team1 = row['team1']
-                    if team1 not in teams:
+                    if (team1 not in teams['created']
+                            and team1 not in teams['updated']):
                         team_bd = Team.objects.filter(name=team1)
                         if team_bd.exists():
-                            teams[team1] = {'bd': team_bd}
+                            teams['updated']['team1'] = team_bd.first()
                         else:
-                            teams[team1] = {'new': True}
+                            teams['created'].add(team1)
                     team2 = row['team2']
-                    if team2 not in teams:
+                    if (team2 not in teams['created']
+                            and team2 not in teams['updated']):
                         team_bd = Team.objects.filter(name=team2)
                         if team_bd.exists():
-                            teams[team2] = {'bd': team_bd}
+                            teams['updated']['team2'] = team_bd.first()
                         else:
-                            teams[team2] = {'new': True}
-
+                            teams['created'].add(team2)
+                    print(team1, team2, teams)
                     title = row['tournament']
                     if (title not in tournaments['created']
                             and title not in tournaments['updated']):
@@ -97,13 +99,12 @@ class Command(BaseCommand):
                             tournaments['created'].add(title)
 
                     date = datetime.strptime(row['date'], '%Y-%m-%d').date()
-                    team1 = teams[team1]
-                    team2 = teams[team2]
-                    if 'bd' in team1 and 'bd' in team2:
+                    if team1 in teams['updated'] and team2 in teams['updated']:
                         if Match.objects.filter(date=date,
-                                                team1=team1['bd'],
-                                                team2=team2['bd']).exists():
-                            matches['update'].append(row)
+                                                team1=teams['updated'][team1],
+                                                team2=teams['updated'][team2]
+                                                ).exists():
+                            matches['updated'].append(row)
                         else:
                             matches['created'].append(row)
                     row = next(reader, None)
@@ -113,15 +114,27 @@ class Command(BaseCommand):
         pprint(matches)
 
         if state_delete_all:
-            pass
+            res, _ = Tournament.objects.all().exclude(
+                title__in=list(tournaments['created'])
+            ).exclude(
+                title__in=list(tournaments['updated'])
+            ).delete()
+            if res:
+                logger.info(f'Из Tournament удаленны {res} элементов')
+            Team.objects.all().exclude(
+                name__in=list(teams['created'])
+            ).exclude(
+                name__in=[name for name in teams['updated'].keys()]
+            )
+            print(res)
 
         if state_update:
             pass
 
-        tournament_instances = [
-            Tournament(title=title) for title in tournaments['created']
-        ]
+        items = [Tournament(title=title) for title in tournaments['created']]
+        Tournament.objects.bulk_create(items)
 
-        Tournament.objects.bulk_create(tournament_instances)
+        items = [Team(name=name) for name in teams['created']]
+        Team.objects.bulk_create(items)
 
 
