@@ -55,7 +55,7 @@ class Command(BaseCommand):
             full_name_file = os.path.join(self.PATH_CSV, name_file + '.csv')
             print(f'{full_name_file} - {os.path.exists(full_name_file)}')
 
-        tournaments = {}
+        tournaments = {'updated': set(), 'created': set()}
         teams = {}
         matches = {'updated': [], 'created': []}
         shootouts = {'updated': [], 'created': []}
@@ -89,10 +89,12 @@ class Command(BaseCommand):
                             teams[team2] = {'new': True}
 
                     title = row['tournament']
-                    if title not in tournaments:
-                        tournament_bd = Tournament.objects.filter(title=title)
-                        tournaments[title] = tournament_bd if (
-                            tournament_bd.exists()) else None
+                    if (title not in tournaments['created']
+                            and title not in tournaments['updated']):
+                        if Tournament.objects.filter(title=title).exists():
+                            tournaments['updated'].add(title)
+                        else:
+                            tournaments['created'].add(title)
 
                     date = datetime.strptime(row['date'], '%Y-%m-%d').date()
                     team1 = teams[team1]
@@ -116,7 +118,9 @@ class Command(BaseCommand):
         if state_update:
             pass
 
-        tournament_instances = [Tournament(title=key) for key, value in tournaments.items() if value is None]
+        tournament_instances = [
+            Tournament(title=title) for title in tournaments['created']
+        ]
 
         Tournament.objects.bulk_create(tournament_instances)
 
