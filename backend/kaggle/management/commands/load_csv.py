@@ -25,9 +25,6 @@ from kaggle.models import Tournament, Team, Match, Shootout
 logger = logging.getLogger(__name__)
 
 
-# def item_created_or_update(match: Match) -> bool:
-
-
 class Command(BaseCommand):
     PATH_CSV = os.path.abspath(os.path.join(BASE_DIR, '..', 'data_csv'))
     FILES = ('results', 'shootouts', 'goalscorers')
@@ -81,6 +78,7 @@ class Command(BaseCommand):
                             teams['updated']['team1'] = team_bd.first()
                         else:
                             teams['created'].add(team1)
+
                     team2 = row['team2']
                     if (team2 not in teams['created']
                             and team2 not in teams['updated']):
@@ -89,7 +87,8 @@ class Command(BaseCommand):
                             teams['updated']['team2'] = team_bd.first()
                         else:
                             teams['created'].add(team2)
-                    print(team1, team2, teams)
+                    # print(team1, team2, teams)
+
                     title = row['tournament']
                     if (title not in tournaments['created']
                             and title not in tournaments['updated']):
@@ -99,7 +98,11 @@ class Command(BaseCommand):
                             tournaments['created'].add(title)
 
                     date = datetime.strptime(row['date'], '%Y-%m-%d').date()
-                    if team1 in teams['updated'] and team2 in teams['updated']:
+                    print(f'{team1} in {teams["updated"].values()} == {team1 in teams["updated"].values()}')
+                    print(f'{team2} in {teams["updated"].values()} == {team2 in teams["updated"].values()}')
+                    print('-'*78)
+                    if (team1 in teams['updated'].values()
+                            and team2 in teams['updated'].values()):
                         if Match.objects.filter(date=date,
                                                 team1=teams['updated'][team1],
                                                 team2=teams['updated'][team2]
