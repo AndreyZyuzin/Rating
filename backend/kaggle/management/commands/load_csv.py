@@ -75,7 +75,7 @@ class Command(BaseCommand):
                             and team1 not in teams['updated']):
                         team_bd = Team.objects.filter(name=team1)
                         if team_bd.exists():
-                            teams['updated']['team1'] = team_bd.first()
+                            teams['updated'][team_bd.name] = team_bd.first()
                         else:
                             teams['created'].add(team1)
 
@@ -84,7 +84,7 @@ class Command(BaseCommand):
                             and team2 not in teams['updated']):
                         team_bd = Team.objects.filter(name=team2)
                         if team_bd.exists():
-                            teams['updated']['team2'] = team_bd.first()
+                            teams['updated'][team_bd.name] = team_bd.first()
                         else:
                             teams['created'].add(team2)
                     # print(team1, team2, teams)
@@ -98,7 +98,7 @@ class Command(BaseCommand):
                             tournaments['created'].add(title)
 
                     date = datetime.strptime(row['date'], '%Y-%m-%d').date()
-                    print(f'{team1} in {teams["updated"].values()} == {team1 in teams["updated"].values()}')
+                    print(f'{team1} in {teams["updated"]} == {team1 in teams["updated"]}')
                     print(f'{team2} in {teams["updated"].values()} == {team2 in teams["updated"].values()}')
                     print('-'*78)
                     if (team1 in teams['updated'].values()
