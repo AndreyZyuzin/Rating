@@ -47,7 +47,6 @@ class Command(BaseCommand):
         state_delete_all = options.get('delete_all')
 
         print(self.PATH_CSV)
-        print(state_update, state_delete_all)
         for name_file in self.FILES:
             full_name_file = os.path.join(self.PATH_CSV, name_file + '.csv')
             print(f'{full_name_file} - {os.path.exists(full_name_file)}')
@@ -55,7 +54,6 @@ class Command(BaseCommand):
         tournaments = {'updated': {}, 'created': set()}
         teams = {'updated': {}, 'created': set()}
         matches = {'updated': [], 'created': []}
-        shootouts = {'updated': [], 'created': []}
         goalscorers = {'updated': [], 'created': []}
 
         full_name_file = os.path.join(self.PATH_CSV, self.FILES[0] + '.csv')
@@ -112,7 +110,8 @@ class Command(BaseCommand):
                             team2=teams['updated'][team2],
                         )
                         if match.exists():
-                            matches['updated'].append(match.first())
+                            row['match'] = match.first()
+                            matches['updated'].append(row)
                         else:
                             matches['created'].append(row)
                     else:
@@ -120,40 +119,101 @@ class Command(BaseCommand):
 
                     row = next(reader, None)
 
-        # pprint(teams)
-        # pprint(tournaments)
-        # pprint(matches)
+#        pprint(teams)
+#        pprint(tournaments)
+#        pprint(matches['created'][-10:])
+#        pprint(matches['updated'][-10:])
+
+        missing_tournaments = Tournament.objects.all().exclude(
+                title__in=list(tournaments['updated'])
+            )
+
+        missing_teams = Team.objects.all().exclude(
+                name__in=teams['updated'].keys()
+            )
+
+        missing_matches = Match.objects.all().exclude(
+                id__in=[item['match'].id for item in matches['updated']]
+            )
 
         if state_delete_all:
-            res, _ = Tournament.objects.all().exclude(
-                title__in=list(tournaments['created'])
-            ).exclude(
-                title__in=list(tournaments['updated'])
-            ).delete()
+            logger.info('Начала удаление старых данных')
+            res, _ = missing_tournaments.delete()
             if res:
                 logger.info(f'Из Tournament удаленны {res} элементов')
-            Team.objects.all().exclude(
-                name__in=list(teams['created'])
-            ).exclude(
-                name__in=[name for name in teams['updated'].keys()]
-            )
-            print(res)
 
-        if state_update:
-            pass
+            res, _ = missing_teams.delete()
+            if res:
+                logger.info(f'Из Team удаленны {res} элементов')
 
+            res, _ = missing_matches.delete()
+            if res:
+                logger.info(f'Из Match удаленны {res} элементов')
+        else:
+            res = missing_tournaments.count()
+            if res:
+                logger.info(f'В Tournament найдены {res} элементов')
+
+            res = missing_teams.count()
+            if res:
+                logger.info(f'В Team найдены {res} элементов')
+
+            res = missing_matches.count()
+            if res:
+                logger.info(f'В Match найдены {res} элементов')
+
+        if tournaments['created']:
+            logger.info('Запуск создание новых турниров')
         items = [Tournament(title=title) for title in tournaments['created']]
         Tournament.objects.bulk_create(items)
 
+        if teams['created']:
+            logger.info('Запуск создания новых команд')
         items = [Team(name=name) for name in teams['created']]
         Team.objects.bulk_create(items)
 
+        if state_update:
+            if matches['updated']:
+                logger.info('Запуск обновления матчей')
+            items = []
+            for row in matches['updated']:
+                match = row['match']
+                tournament = row['tournament']
+                if match.tournament.title != tournament:
+                    match.tournament = Tournament.objects.get(title=tournament)
+                match.goals1 = row['goals1']
+                match.goals2 = row['goals2']
+                match.is_neutral = row['is_neutral']
+                match.country = row['country']
+                match.city = row['city']
+                items.append(match)
+            Match.objects.bulk_update(items,
+                                      ['tournament_id', 'goals1', 'goals2',
+                                       'is_neutral', 'country', 'city']
+                                      )
+
+        if matches['created']:
+            logger.info('Запуск создания новых матчей')
         items = []
         for match in matches['created']:
-            match['team1'] = Team(name=match['team1'])
-            match['team2'] = Team(name=match['team2'])
-            match['tournament'] = Tournament.objects.get(title=match['tournament'])
-            # print('-'*80, '\n', match)
+            match['team1'] = Team.objects.get(name=match['team1'])
+            match['team2'] = Team.objects.get(name=match['team2'])
+            match['tournament'] = \
+                Tournament.objects.get(title=match['tournament'])
             items.append(Match(**match))
-        pprint(items)
-        Match.objects.bulk_create(items)
+
+        from django.db.utils import IntegrityError
+        try:
+            Match.objects.bulk_create(items,)  # ignore_conflicts=True)
+        except IntegrityError:
+            for item in items:
+                try:
+                    item.save()
+                except IntegrityError as exc:
+                    logger.error(exc)
+                    logger.warning(f'Следует проверить строку: {item.date}, '
+                                   f'{item.team1}, {item.team2}, '
+                                   f'{item.goals1}, {item.goals2}, '
+                                   f'{item.tournament}')
+
+###############################################
