@@ -52,7 +52,7 @@ class Command(BaseCommand):
             full_name_file = os.path.join(self.PATH_CSV, name_file + '.csv')
             print(f'{full_name_file} - {os.path.exists(full_name_file)}')
 
-        tournaments = {'updated': set(), 'created': set()}
+        tournaments = {'updated': {}, 'created': set()}
         teams = {'updated': {}, 'created': set()}
         matches = {'updated': [], 'created': []}
         shootouts = {'updated': [], 'created': []}
@@ -75,16 +75,17 @@ class Command(BaseCommand):
                             and team1 not in teams['updated']):
                         team_bd = Team.objects.filter(name=team1)
                         if team_bd.exists():
-                            teams['updated'][team_bd.name] = team_bd.first()
+                            team_bd = team_bd.first()
+                            teams['updated'][team_bd.name] = team_bd
                         else:
                             teams['created'].add(team1)
 
                     team2 = row['team2']
                     if (team2 not in teams['created']
                             and team2 not in teams['updated']):
-                        team_bd = Team.objects.filter(name=team2)
-                        if team_bd.exists():
-                            teams['updated'][team_bd.name] = team_bd.first()
+                        team_db = Team.objects.filter(name=team2)
+                        if team_db.exists():
+                            teams['updated'][team2] = team_db.first()
                         else:
                             teams['created'].add(team2)
                     # print(team1, team2, teams)
@@ -92,29 +93,36 @@ class Command(BaseCommand):
                     title = row['tournament']
                     if (title not in tournaments['created']
                             and title not in tournaments['updated']):
-                        if Tournament.objects.filter(title=title).exists():
-                            tournaments['updated'].add(title)
+                        tournament = Tournament.objects.filter(title=title)
+                        if tournament.exists():
+                            tournaments['updated'][title] = tournament.first()
                         else:
                             tournaments['created'].add(title)
 
                     date = datetime.strptime(row['date'], '%Y-%m-%d').date()
-                    print(f'{team1} in {teams["updated"]} == {team1 in teams["updated"]}')
-                    print(f'{team2} in {teams["updated"].values()} == {team2 in teams["updated"].values()}')
-                    print('-'*78)
-                    if (team1 in teams['updated'].values()
-                            and team2 in teams['updated'].values()):
-                        if Match.objects.filter(date=date,
-                                                team1=teams['updated'][team1],
-                                                team2=teams['updated'][team2]
-                                                ).exists():
-                            matches['updated'].append(row)
+                    row['date'] = date
+                    is_neutral = row['is_neutral']
+                    row['is_neutral'] = True if is_neutral == 'TRUE' else False
+                    row['goals1'] = int(row['goals1'])
+                    row['goals2'] = int(row['goals2'])
+                    if team1 in teams['updated'] and team2 in teams['updated']:
+                        match = Match.objects.filter(
+                            date=date,
+                            team1=teams['updated'][team1],
+                            team2=teams['updated'][team2],
+                        )
+                        if match.exists():
+                            matches['updated'].append(match.first())
                         else:
                             matches['created'].append(row)
+                    else:
+                        matches['created'].append(row)
+
                     row = next(reader, None)
 
-        pprint(teams)
-        pprint(tournaments)
-        pprint(matches)
+        # pprint(teams)
+        # pprint(tournaments)
+        # pprint(matches)
 
         if state_delete_all:
             res, _ = Tournament.objects.all().exclude(
@@ -140,4 +148,12 @@ class Command(BaseCommand):
         items = [Team(name=name) for name in teams['created']]
         Team.objects.bulk_create(items)
 
-
+        items = []
+        for match in matches['created']:
+            match['team1'] = Team(name=match['team1'])
+            match['team2'] = Team(name=match['team2'])
+            match['tournament'] = Tournament.objects.get(title=match['tournament'])
+            # print('-'*80, '\n', match)
+            items.append(Match(**match))
+        pprint(items)
+        Match.objects.bulk_create(items)
