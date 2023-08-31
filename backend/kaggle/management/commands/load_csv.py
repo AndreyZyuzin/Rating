@@ -18,6 +18,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand, CommandParser
 from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.utils import IntegrityError
 
 from rating.settings import BASE_DIR
 from kaggle.models import Tournament, Team, Match, Shootout
@@ -202,7 +203,6 @@ class Command(BaseCommand):
                 Tournament.objects.get(title=match['tournament'])
             items.append(Match(**match))
 
-        from django.db.utils import IntegrityError
         try:
             Match.objects.bulk_create(items,)  # ignore_conflicts=True)
         except IntegrityError:
@@ -217,3 +217,75 @@ class Command(BaseCommand):
                                    f'{item.tournament}')
 
 ###############################################
+
+        print(f'Запуск {self.FILES[1]}')
+        shootouts = {'updated': [], 'created': []}
+        full_name_file = os.path.join(self.PATH_CSV, self.FILES[1] + '.csv')
+        if os.path.isfile(full_name_file):
+            with open(full_name_file, encoding='utf-8') as file:
+                reader = csv.DictReader(
+                    file,
+                    fieldnames=('date', 'team1', 'team2', 'winner'),
+                )
+                row = next(reader, None)
+                if row['date'] == 'date':
+                    row = next(reader, None)
+                while row is not None:
+                    date = datetime.strptime(row['date'], '%Y-%m-%d').date()
+                    team1_name = row['team1']
+                    team1 = Team.objects.filter(name=team1_name)
+                    if not team1.exists():
+                        logger.info(f'В строке {row} не найден {team1_name}')
+                        row = next(reader, None)
+                        continue
+                    team1 = team1.first()
+                    team2_name = row['team2']
+                    team2 = Team.objects.filter(name=team2_name)
+                    if not team2.exists():
+                        logger.info(f'В строке {row} не найден {team1_name}')
+                        row = next(reader, None)
+                        continue
+                    team2 = team2.first()
+                    match = Match.objects.filter(date=date,
+                                                 team1=team1,
+                                                 team2=team2)
+                    if not match.exists():
+                        logger.info(f'В строке {row} не найден '
+                                    'соответствующего матча')
+                        row = next(reader, None)
+                        continue
+                    match = match.first()
+                    winner = row['winner']
+                    if winner == team1_name:
+                        winner = Shootout.Winner.FIRST
+                    elif winner == team2_name:
+                        winner = Shootout.Winner.SECOND
+                    else:
+                        winner = Shootout.Winner.UNKNOWN
+                    shootout = Shootout.objects.filter(match=match)
+                    if shootout.exists():
+                        shootout = shootout.first()
+                        if state_update and shootout.winner != winner:
+                            shootout.choice_winner = winner
+                            shootouts['updated'].append(shootout)
+                    else:
+                        shootouts['created'].append(
+                            Shootout(match=match, choice_winner=winner)
+                        )
+                    row = next(reader, None)
+
+        if state_update:
+            Shootout.objects.bulk_update(
+                shootouts['updated'], ['choice_winner'])
+        try:
+            Shootout.objects.bulk_create(shootouts['created'])
+        except IntegrityError:
+            for item in shootouts['created']:
+                try:
+                    item.save()
+                except IntegrityError as exc:
+                    logger.error(exc)
+                    logger.warning(f'Следует проверить строку: {item.date}, '
+                                   f'{item.match.team1}, {item.match.team2}, '
+                                   f'{item.match.winner}')
+ 
