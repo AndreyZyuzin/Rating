@@ -35,7 +35,7 @@ class MatchAdmin(admin.ModelAdmin):
     list_display_links = list_display
     list_filter = ('tournament', 'date')
     search_fields = ('tournament__title',)
-    ordering = ('-date',)
+    ordering = ('-date', '-tournament__coefficient')
     fieldsets = (
         ('Турнир', {
             'fields': ('tournament',)
@@ -48,13 +48,21 @@ class MatchAdmin(admin.ModelAdmin):
         }),
     )
     inlines = (ShootoutInline, GoalInline,)
+    list_per_page = 30
 
     def result(self, match):
         return f'{match} - {match.goals1}:{match.goals2}'
     result.short_description = 'Матч'
 
     def location(self, match):
-        return f'{match.city}({match.country})'
+        city, country = match.city, match.country
+        if city and country:
+            return f'{match.city}({match.country})'
+        if city is None and country is None:
+            return '---'
+        if city is None:
+            return f'{country}'
+        return f'{city}'
     location.short_description = 'Место встречи'
 
     def addition(self, match):
