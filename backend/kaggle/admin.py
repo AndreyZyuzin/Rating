@@ -18,9 +18,8 @@ class TournamentAdmin(admin.ModelAdmin):
 
 
 class ShootoutInline(admin.StackedInline):
+    # list_display = ('id', 'match', 'choice_winner')
     model = Shootout
-    can_delete = True
-    extra = 0
 
 
 class GoalInline(admin.TabularInline):
@@ -76,7 +75,9 @@ class MatchAdmin(admin.ModelAdmin):
 
 
 class ShootoutAdmin(admin.ModelAdmin):
-    list_display = ('match', 'winner',)
+    list_display = ('pk', 'match', 'winner',)
+    list_display_links = list_display
+    fields = ('match', 'choice_winner',)
 
 
 admin.site.register(Shootout, ShootoutAdmin)

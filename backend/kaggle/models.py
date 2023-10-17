@@ -120,11 +120,11 @@ class Match(models.Model):
             raise ValidationError(
                 f'Недопустимо, чтобы команда {name} играла сама с собой.')
 
-    def save(self, *args, **kwargs):
-        print('saving Match')
-        if hasattr(self, 'shootout'):
-            print('no shootout')
-        return super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     print('saving Match')
+    #     if hasattr(self, 'shootout'):
+    #         print('no shootout')
+    #     return super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.team1}-{self.team2}'
@@ -167,7 +167,8 @@ class Shootout(models.Model):
     winner = property(__winner)
 
     def __str__(self):
-        return f'{self.match}'
+        print(hasattr(self, 'match'))
+        return f'id {self.pk}: {self.match}' if hasattr(self, 'match') else ''
 
 
 class Goal(models.Model):
