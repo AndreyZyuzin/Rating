@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group, User
 
-from kaggle.models import Goal, Match, Shootout, Team, Tournament
+from kaggle.models import Goal, Match, Shootout, Team, Tournament, Note
 
 
 class TournamentAdmin(admin.ModelAdmin):
@@ -22,9 +22,26 @@ class ShootoutInline(admin.StackedInline):
     model = Shootout
 
 
-class GoalInline(admin.TabularInline):
+class NoteInline(admin.StackedInline):
+    model = Note
+
+
+@admin.register(Goal)
+class GoalAdmin(admin.ModelAdmin):
+    list_display = ('scorer', 'minute', 'choice_team', 'get_note',)
+    inlines = NoteInline,
+
+    def get_note(self, goal):
+        print(dir(goal))
+        if hasattr(goal, 'note'):
+            return 'note'
+        else:
+            return '----'
+
+class GoalLinkInline(admin.TabularInline):
     model = Goal
     extra = 0
+    show_change_link = True
 
 
 @admin.register(Match)
@@ -46,8 +63,9 @@ class MatchAdmin(admin.ModelAdmin):
             'fields': ('is_neutral', ('team1', 'team2'), ('goals1', 'goals2'))
         }),
     )
-    inlines = (ShootoutInline, GoalInline,)
+    inlines = (ShootoutInline, GoalLinkInline,)
     list_per_page = 30
+    save_on_top = True
 
     def result(self, match):
         return f'{match} - {match.goals1}:{match.goals2}'
@@ -74,14 +92,7 @@ class MatchAdmin(admin.ModelAdmin):
     addition.short_description = 'Разное'
 
 
-class ShootoutAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'match', 'winner',)
-    list_display_links = list_display
-    fields = ('match', 'choice_winner',)
-
-
-admin.site.register(Shootout, ShootoutAdmin)
 admin.site.register(Tournament, TournamentAdmin)
-admin.site.register(Team)
+
 admin.site.unregister(User)
 admin.site.unregister(Group)

@@ -98,7 +98,8 @@ class Match(models.Model):
     )
     is_neutral = models.BooleanField(
         help_text='Нейтральное ли поле',
-        verbose_name='Нейтральность',)
+        verbose_name='Нейтральность',
+    )
     country = models.CharField(
         max_length=50,
         help_text='Страна проведения',
@@ -119,12 +120,6 @@ class Match(models.Model):
             name = self.team1.name
             raise ValidationError(
                 f'Недопустимо, чтобы команда {name} играла сама с собой.')
-
-    # def save(self, *args, **kwargs):
-    #     print('saving Match')
-    #     if hasattr(self, 'shootout'):
-    #         print('no shootout')
-    #     return super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.team1}-{self.team2}'
@@ -178,11 +173,6 @@ class Goal(models.Model):
         FIRST = 1, 'First'
         SECOND = 2, 'Second'
 
-    class Status(models.IntegerChoices):
-        NONE = 0, ''
-        PENALTY = 1, 'Penalty'
-        OWN = 2, 'Own goal'
-
     class Meta:
         verbose_name = 'Гол'
         verbose_name_plural = 'Голы'
@@ -209,12 +199,6 @@ class Goal(models.Model):
         verbose_name='Команда',
         choices=FromTeam.choices,
     )
-    status = models.SmallIntegerField(
-        help_text='Примечание',
-        verbose_name='Прим.',
-        choices=Status.choices,
-        default=Status.NONE,
-    )
 
     def __team(self):
         if self.choice_team == Goal.FromTeam.FIRST:
@@ -228,3 +212,30 @@ class Goal(models.Model):
     def __str__(self):
         return f'{self.scorer}'
 
+
+class Note(models.Model):
+    """Модель примечания голу."""
+
+    class Type(models.IntegerChoices):
+        NONE = 0, 'None'
+        PENALTY = 1, 'Penalty'
+        OWN = 2, 'Own goal'
+
+    goal = models.OneToOneField(
+        Goal,
+        help_text='Гол',
+        verbose_name='Голы',
+        on_delete=models.CASCADE,
+        related_name='note',
+        primary_key=True,
+    )
+
+    type = models.SmallIntegerField(
+        help_text='Примечание',
+        verbose_name='Прим.',
+        choices=Type.choices,
+        default=Type.NONE,
+    )
+
+    def __str__(self):
+        return f'{self.pk}'
