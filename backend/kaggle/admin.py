@@ -26,28 +26,39 @@ class NoteInline(admin.StackedInline):
     model = Note
 
 
-@admin.register(Goal)
+# @admin.register(Goal)
 class GoalAdmin(admin.ModelAdmin):
-    list_display = ('scorer', 'minute', 'choice_team', 'get_note',)
+    list_display = ('scorer', 'get_match',
+                    'minute', 'choice_team', 'get_note',)
+    list_display_links = list_display
     inlines = NoteInline,
 
     def get_note(self, goal):
-        print(dir(goal))
         if hasattr(goal, 'note'):
-            return 'note'
-        else:
-            return '----'
+            return goal.note.get_type_display()
+    get_note.short_description = 'Прим.'
+
+    def get_match(self, goal):
+        return f'{goal.match.id}: {goal.match}'
+    get_match.short_description = 'Матч'
+
 
 class GoalLinkInline(admin.TabularInline):
     model = Goal
     extra = 0
     show_change_link = True
+    fields = ('scorer', 'minute', 'choice_team', 'get_note',)
+    readonly_fields = ('get_note',)
+
+    def get_note(self, goal):
+        return goal.note.get_type_display() if hasattr(goal, 'note') else ''
+    get_note.short_description = 'Прим.'
 
 
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
     list_display = ('id', 'date', 'tournament', 'result', 'location',
-                    'addition')
+                    'addition', 'goals',)
     list_display_links = list_display
     list_filter = ('tournament', 'date')
     search_fields = ('tournament__title',)
@@ -90,6 +101,16 @@ class MatchAdmin(admin.ModelAdmin):
             notes.append('нейтр.')
         return ', '.join(notes)
     addition.short_description = 'Разное'
+
+    def goals(self, match):
+        scorers = list(match.goalscore.order_by('minute')
+                       .values_list('scorer', flat=True))
+        print(scorers)
+        res = '…, ' if len(scorers) > 3 else ''
+        res += ', '.join(scorers[-3:])
+        print(res)
+        return res
+
 
 
 admin.site.register(Tournament, TournamentAdmin)
