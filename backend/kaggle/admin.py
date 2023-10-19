@@ -22,13 +22,13 @@ class ShootoutInline(admin.StackedInline):
     model = Shootout
 
 
-class NoteInline(admin.StackedInline):
+class NoteInline(admin.TabularInline):
     model = Note
 
 
-# @admin.register(Goal)
+@admin.register(Goal)
 class GoalAdmin(admin.ModelAdmin):
-    list_display = ('scorer', 'get_match',
+    list_display = ('id', 'scorer', 'get_match',
                     'minute', 'choice_team', 'get_note',)
     list_display_links = list_display
     inlines = NoteInline,
