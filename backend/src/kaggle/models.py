@@ -10,7 +10,35 @@ class Team(models.Model):
     class Meta:
         verbose_name = 'Команда'
         verbose_name_plural = 'Команды'
-        ordering = ('name', )
+
+    alias = models.ForeignKey(
+        'AliasTeam',
+        on_delete=models.CASCADE,
+        help_text='Название команды',
+        verbose_name='Название',
+        related_name='teams',
+    )
+
+    def __str__(self):
+        return f'{self.alias}'
+
+
+class AliasTeam(models.Model):
+    """Модель другая название команды."""
+
+    class Meta:
+        verbose_name = "Название команды"
+        verbose_name_plural = "Команды"
+        ordering = ('team', 'name',)
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        help_text='Название команды',
+        verbose_name='Название',
+        related_name='aliases',
+        null=True,
+    )
 
     name = models.CharField(
         max_length=50,

@@ -43,7 +43,7 @@ MIDDLEWARE = [
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
-ROOT_URLCONF = 'rating.urls'
+ROOT_URLCONF = 'urls'
 
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 
@@ -63,7 +63,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'rating.wsgi.application'
+WSGI_APPLICATION = 'wsgi.application'
 
 
 # Database

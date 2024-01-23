@@ -1,7 +1,19 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group, User
 
-from kaggle.models import Goal, Match, Shootout, Team, Tournament, Note
+from kaggle.models import (AliasTeam, Goal, Match, Shootout, Team, Tournament,
+                           Note,)
+
+
+class AliasTeamInline(admin.TabularInline):
+    model = AliasTeam
+    extra = 1
+
+
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
+    list_display = ('alias',)
+    inlines = AliasTeamInline,
 
 
 class TournamentAdmin(admin.ModelAdmin):
