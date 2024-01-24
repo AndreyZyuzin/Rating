@@ -17,7 +17,16 @@ class Team(models.Model):
         help_text='Название команды',
         verbose_name='Название',
         related_name='teams',
+        null=True,
+        blank=True,
     )
+
+    def clean(self) -> None:
+        if not self.alias:
+            return
+        print(f'{self.__dict__}')
+        if self.alias.team_id != self.id:
+            raise ValidationError(f'Недопустимый посевдоним.')
 
     def __str__(self):
         return f'{self.alias}'
@@ -37,7 +46,6 @@ class AliasTeam(models.Model):
         help_text='Название команды',
         verbose_name='Название',
         related_name='aliases',
-        null=True,
     )
 
     name = models.CharField(

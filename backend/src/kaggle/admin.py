@@ -15,6 +15,15 @@ class TeamAdmin(admin.ModelAdmin):
     list_display = ('alias',)
     inlines = AliasTeamInline,
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        from pprint import pprint
+        if db_field.name == "alias":
+            kwargs['queryset'] = AliasTeam.objects.filter(
+                team_id=request.resolver_match.kwargs['object_id']
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
 
 class TournamentAdmin(admin.ModelAdmin):
     list_display = ('title', 'coefficient')
@@ -122,7 +131,6 @@ class MatchAdmin(admin.ModelAdmin):
         res += ', '.join(scorers[-3:])
         print(res)
         return res
-
 
 
 admin.site.register(Tournament, TournamentAdmin)
